@@ -121,6 +121,39 @@ export const getFullHistoricalData = () => {
   return fullHistoricalData;
 };
 
+// Update today's data in the historical dataset
+export const updateTodaysDataInHistory = (currentHabits) => {
+  const today = new Date().toISOString().split('T')[0];
+  const fullData = getFullHistoricalData();
+  
+  // Find today's entry
+  const todayIndex = fullData.findIndex(day => day.date === today);
+  
+  if (todayIndex !== -1) {
+    // Update today's data with current habits
+    const completedHabits = currentHabits.filter(habit => habit.completed).map(habit => habit.id);
+    const habitDetails = currentHabits.map(habit => ({
+      id: habit.id,
+      name: habit.name,
+      emoji: habit.emoji,
+      completed: habit.completed
+    }));
+    
+    fullData[todayIndex] = {
+      ...fullData[todayIndex],
+      totalScore: completedHabits.length,
+      completedHabits,
+      habitDetails
+    };
+    
+    // Update the stored data
+    fullHistoricalData = fullData;
+    localStorage.setItem('habitTracker_90DaysData', JSON.stringify(fullData));
+  }
+  
+  return fullData;
+};
+
 // Get data for specific periods from the 90-day dataset
 export const getMockHistoryFromStorage = (period = '7') => {
   const fullData = getFullHistoricalData();
@@ -148,6 +181,8 @@ export const getMockHabitsFromStorage = () => {
 
 export const saveMockHabitsToStorage = (habits) => {
   localStorage.setItem('habitTrackerHabits', JSON.stringify(habits));
+  // Also update today's historical data
+  updateTodaysDataInHistory(habits);
 };
 
 export const saveMockHistoryToStorage = (history, period = '7') => {

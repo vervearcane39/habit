@@ -14,11 +14,21 @@ const ProgressGraph = () => {
   const [selectedDay, setSelectedDay] = useState(null);
   const [showDayModal, setShowDayModal] = useState(false);
 
-  useEffect(() => {
+  // Function to refresh data
+  const refreshData = () => {
     const data = getMockHistoryFromStorage(selectedPeriod);
     setHistoryData(data);
     setStatistics(getStatistics(data));
+  };
+
+  useEffect(() => {
+    refreshData();
   }, [selectedPeriod]);
+
+  // Force refresh when component re-mounts (triggered by key change in Dashboard)
+  useEffect(() => {
+    refreshData();
+  }, []);
 
   const periods = [
     { value: '7', label: '7 Days' },
@@ -37,7 +47,7 @@ const ProgressGraph = () => {
   const renderBarChart = () => (
     <div className="flex items-end justify-between h-64 bg-gradient-to-t from-gray-50 to-white rounded-lg p-4 border">
       {historyData.map((day, index) => (
-        <div key={day.date} className="flex flex-col items-center flex-1 h-full group">
+        <div key={`${day.date}-${day.totalScore}`} className="flex flex-col items-center flex-1 h-full group">
           <div className="flex-1 flex items-end w-full px-1">
             <div
               className="bg-gradient-to-t from-blue-600 to-blue-400 rounded-t-lg w-full min-h-[8px] transition-all duration-300 ease-out hover:from-blue-700 hover:to-blue-500 relative cursor-pointer shadow-sm hover:shadow-md transform hover:scale-105"
@@ -113,7 +123,7 @@ const ProgressGraph = () => {
           
           {/* Data points */}
           {points.map((point, index) => (
-            <g key={index}>
+            <g key={`point-${index}-${point.score}`}>
               <circle
                 cx={point.x}
                 cy={point.y}
@@ -171,6 +181,9 @@ const ProgressGraph = () => {
             <CardTitle className="flex items-center gap-2 text-gray-900">
               <TrendingUp className="h-6 w-6" />
               Progress Analytics
+              <div className="text-xs bg-green-100 text-green-600 px-2 py-1 rounded ml-2">
+                Live Updates
+              </div>
             </CardTitle>
             
             {/* Chart type toggle */}

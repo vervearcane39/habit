@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from './ui/card';
 import { Badge } from './ui/badge';
 import { Button } from './ui/button';
@@ -7,7 +7,8 @@ import { Plus, Target, TrendingUp } from 'lucide-react';
 import { 
   getMockHabitsFromStorage, 
   saveMockHabitsToStorage,
-  getTodaysScore 
+  getTodaysScore,
+  updateTodaysDataInHistory
 } from '../mock';
 import HabitManager from './HabitManager';
 import ProgressGraph from './ProgressGraph';
@@ -16,6 +17,7 @@ const Dashboard = () => {
   const [habits, setHabits] = useState([]);
   const [showHabitManager, setShowHabitManager] = useState(false);
   const [todayScore, setTodayScore] = useState(0);
+  const [refreshGraph, setRefreshGraph] = useState(0);
 
   useEffect(() => {
     const storedHabits = getMockHabitsFromStorage();
@@ -23,23 +25,36 @@ const Dashboard = () => {
     setTodayScore(getTodaysScore(storedHabits));
   }, []);
 
-  const toggleHabitCompletion = (habitId) => {
+  const toggleHabitCompletion = useCallback((habitId) => {
     const updatedHabits = habits.map(habit => 
       habit.id === habitId 
         ? { ...habit, completed: !habit.completed }
         : habit
     );
     
+    // Update habits state
     setHabits(updatedHabits);
+    
+    // Save to storage and update historical data
     saveMockHabitsToStorage(updatedHabits);
-    setTodayScore(getTodaysScore(updatedHabits));
-  };
+    
+    // Update today's score
+    const newScore = getTodaysScore(updatedHabits);
+    setTodayScore(newScore);
+    
+    // Trigger graph refresh by updating key
+    setRefreshGraph(prev => prev + 1);
+  }, [habits]);
 
-  const handleHabitsUpdate = (updatedHabits) => {
+  const handleHabitsUpdate = useCallback((updatedHabits) => {
     setHabits(updatedHabits);
     setTodayScore(getTodaysScore(updatedHabits));
     setShowHabitManager(false);
-  };
+    
+    // Update historical data and refresh graph
+    updateTodaysDataInHistory(updatedHabits);
+    setRefreshGraph(prev => prev + 1);
+  }, []);
 
   const formatDate = (date) => {
     return new Intl.DateTimeFormat('en-US', {
@@ -151,8 +166,8 @@ const Dashboard = () => {
           </CardContent>
         </Card>
 
-        {/* Progress Chart */}
-        <ProgressGraph />
+        {/* Progress Chart with refresh key */}
+        <ProgressGraph key={refreshGraph} />
 
         {/* Habit Manager Modal */}
         {showHabitManager && (
