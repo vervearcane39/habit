@@ -37,35 +37,101 @@ export const mockHabits = [
   }
 ];
 
-// Generate mock historical data for different time periods
-const generateHistoricalData = (days) => {
+// All available habits for historical data generation
+const allHabits = [
+  { id: '1', name: 'Drink 8 glasses of water', emoji: '💧' },
+  { id: '2', name: 'Exercise for 30 minutes', emoji: '🏃‍♂️' },
+  { id: '3', name: 'Read for 20 minutes', emoji: '📚' },
+  { id: '4', name: 'Meditate', emoji: '🧘‍♀️' },
+  { id: '5', name: 'Write in journal', emoji: '✍️' },
+  { id: '6', name: 'Eat healthy meals', emoji: '🥗' },
+  { id: '7', name: 'Get 8 hours sleep', emoji: '😴' },
+  { id: '8', name: 'Practice gratitude', emoji: '🙏' }
+];
+
+// Generate detailed mock historical data for 90 days
+const generateDetailedHistoricalData = () => {
   const data = [];
   const today = new Date();
   
-  for (let i = days - 1; i >= 0; i--) {
+  for (let i = 89; i >= 0; i--) {
     const date = new Date(today);
     date.setDate(today.getDate() - i);
     
-    // Generate realistic random scores
-    const totalScore = Math.floor(Math.random() * 6); // 0-5 habits
-    const completedHabits = Array.from({ length: totalScore }, (_, idx) => `${idx + 1}`);
+    // Generate realistic random completion pattern
+    const numCompleted = Math.floor(Math.random() * (allHabits.length + 1));
+    const completedHabits = [];
+    const habitDetails = [];
+    
+    // Randomly select which habits were completed
+    const shuffledHabits = [...allHabits].sort(() => Math.random() - 0.5);
+    for (let j = 0; j < numCompleted; j++) {
+      const habit = shuffledHabits[j];
+      completedHabits.push(habit.id);
+      habitDetails.push({
+        id: habit.id,
+        name: habit.name,
+        emoji: habit.emoji,
+        completed: true
+      });
+    }
+    
+    // Add non-completed habits
+    for (let j = numCompleted; j < allHabits.length; j++) {
+      const habit = shuffledHabits[j];
+      habitDetails.push({
+        id: habit.id,
+        name: habit.name,
+        emoji: habit.emoji,
+        completed: false
+      });
+    }
     
     data.push({
       date: date.toISOString().split('T')[0],
-      totalScore,
+      totalScore: numCompleted,
       completedHabits,
-      formattedDate: date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
+      habitDetails,
+      formattedDate: date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
+      fullDate: date.toLocaleDateString('en-US', { 
+        weekday: 'long', 
+        year: 'numeric', 
+        month: 'long', 
+        day: 'numeric' 
+      })
     });
   }
   
   return data;
 };
 
-// Mock historical data for different periods
-export const mockHistoricalData = {
-  '7': generateHistoricalData(7),
-  '30': generateHistoricalData(30),
-  '90': generateHistoricalData(90)
+// Generate and store 90 days of data
+let fullHistoricalData = null;
+
+export const getFullHistoricalData = () => {
+  if (!fullHistoricalData) {
+    const stored = localStorage.getItem('habitTracker_90DaysData');
+    if (stored) {
+      fullHistoricalData = JSON.parse(stored);
+    } else {
+      fullHistoricalData = generateDetailedHistoricalData();
+      localStorage.setItem('habitTracker_90DaysData', JSON.stringify(fullHistoricalData));
+    }
+  }
+  return fullHistoricalData;
+};
+
+// Get data for specific periods from the 90-day dataset
+export const getMockHistoryFromStorage = (period = '7') => {
+  const fullData = getFullHistoricalData();
+  const days = parseInt(period);
+  return fullData.slice(-days); // Get last N days
+};
+
+// Get specific day data
+export const getDayData = (dateString) => {
+  const fullData = getFullHistoricalData();
+  return fullData.find(day => day.date === dateString);
 };
 
 // Common emojis for habit creation
@@ -82,18 +148,6 @@ export const getMockHabitsFromStorage = () => {
 
 export const saveMockHabitsToStorage = (habits) => {
   localStorage.setItem('habitTrackerHabits', JSON.stringify(habits));
-};
-
-export const getMockHistoryFromStorage = (period = '7') => {
-  const stored = localStorage.getItem(`habitTrackerHistory_${period}`);
-  if (stored) {
-    return JSON.parse(stored);
-  }
-  
-  // Generate and store new data
-  const newData = mockHistoricalData[period];
-  saveMockHistoryToStorage(newData, period);
-  return newData;
 };
 
 export const saveMockHistoryToStorage = (history, period = '7') => {
@@ -116,7 +170,7 @@ export const getStatistics = (data) => {
   const best = Math.max(...scores);
   const total = scores.reduce((sum, score) => sum + score, 0);
   
-  // Calculate current streak
+  // Calculate current streak (from today backwards)
   let streak = 0;
   for (let i = data.length - 1; i >= 0; i--) {
     if (data[i].totalScore > 0) {
